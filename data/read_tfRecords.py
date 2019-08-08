@@ -6,13 +6,13 @@ class Read_tfRecord(object):
                  num_threads=8, capacity_factor=3, min_after_dequeue=1000):
         """
         :param filename: tfRecord文件路径
-        :param batch_size:
+        :param batch_size: 读取行数
         :param image_h: 图像高度
         :param image_w: 图像长度
         :param image_c: 颜色通道
-        :param num_threads:
+        :param num_threads: 线程数
         :param capacity_factor:
-        :param min_after_dequeue:
+        :param max_after_dequeue: 队列中最大元素数
         """
         self.filename = filename
         self.batch_size = batch_size
@@ -29,12 +29,15 @@ class Read_tfRecord(object):
         :return: tf.train.batch/tf.train.shuffle_batch object
         """
         # 第一步：生成文件名队列
-        filename_queue = tf.data.Dataset.from_tensor_slices([self.filename])
+        # filename_queue = tf.data.Dataset.from_tensor_slices([self.filename])
+
+        filename_queue = tf.train.string_input_producer([self.filename])
 
         # 第二步：创建读取器
         reader = tf.TFRecordReader()
-        key, serialized_example = reader.read(filename_queue)
+        # reader = tf.data.TFRecordDataset('../datasets/tfrecords/Carvana.tfrecords')
 
+        key, serialized_example = reader.read(filename_queue)
         # 第三步：将Example协议缓冲区(protocol buffer)解析为张量字典
         features = tf.parse_single_example(serialized_example,
                                            features={
@@ -59,8 +62,10 @@ class Read_tfRecord(object):
 
         # 第五步：tf.train.shuffle_batch将训练集打乱，每次返回batch_size份数据
         input_data, input_masks = tf.train.shuffle_batch([image_raw, image_label],
-                                                      batch_size=self.batch_size,
-                                                      capacity=self.min_after_dequeue,
-                                                      num_threads=self.num_threads,
-                                                      name="images")
+                                                         batch_size=self.batch_size,
+                                                         capacity=self.min_after_dequeue + self.capacity_factor * self.batch_size,
+                                                         min_after_dequeue=self.min_after_dequeue,
+                                                         num_threads=self.num_threads,
+                                                         name='images')
+
         return input_data, input_masks

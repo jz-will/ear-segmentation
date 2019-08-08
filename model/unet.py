@@ -34,12 +34,12 @@ class UNet(object):
         # raw和mask image：1918 * 1280
         self.image_w = 512
         self.image_h = 512
-        self.image_c = 3
-        # [None, 512, 512, 3]
+        self.image_c = 1
+        # [None, 512, 512, 1]
         self.input_data = tf.placeholder(self.dtype, [None, self.image_h,
                                                       self.image_w, self.image_c])
 
-        # [None, 324, 324, 3]
+        # [None, 324, 324, 1]
         self.input_masks = tf.placeholder(self.dtype, [None, 324, 324,
                                                        self.image_c])
         self.lr = tf.placeholder(self.dtype)
@@ -104,7 +104,7 @@ class UNet(object):
     def train(self, batch_size, training_steps, summary_steps, checkpoint_steps, save_steps):
         """
         训练
-        :param batch_size:
+        :param batch_size: 64
         :param training_steps:  训练迭代步骤数量
         :param summary_steps:  保存summary的步长
         :param checkpoint_steps: 保存checkpoint文件步长
@@ -128,10 +128,11 @@ class UNet(object):
 
         # 定义Read_TFRecords类的对象tf_reader
         tf_reader = read_tfRecords.Read_tfRecord(filename=os.path.join(self.training_set,
-                                                                       "Carvana.tfRecords"),
+                                                                       "tfrecords\\Carvana.tfRecords"),
                                                  batch_size=batch_size, image_h=self.image_h,
-                                                 image_c=self.image_c)
-        # [batch_size,512,512,3], [batch_size,324,324,3]
+                                                 image_w=self.image_w, image_c=self.image_c)
+
+        # todo? images:[batch_size,512,256,1]出错  image_masks: [batch_size,324,324,1]
         images, images_masks = tf_reader.read()
         logging.info("{}: Done init data generators".format(datetime.now()))
 
@@ -146,7 +147,7 @@ class UNet(object):
             for c_step in range(step_num + 1, training_steps + 1):
                 if c_step % 5000 == 0:
                     lrval = self.learning_rate * .5
-
+                # todo? batch_images: [64,542,256,1]  batch_images_masks: [64,324,324,1]
                 batch_images, batch_images_masks = self.sess.run([images, images_masks])
 
                 # 实现反向传播需要的参数
@@ -192,8 +193,10 @@ class UNet(object):
         except KeyboardInterrupt:
             print('Interrupted')
             self.coord.request_stop()
+
         except Exception as e:
             self.coord.request_stop(e)
+
         finally:
             self.coord.request_stop()
             self.coord.join(threads)
@@ -228,16 +231,16 @@ class UNet(object):
 
     def test(self):
         image_name = glob.glob(os.path.join(self.testing_set, "*.jpg"))
-        # image: 1 * 512 * 512 * 3
+        # image: 1 * 512 * 512 * 1
         image = np.reshape(cv2.resize(cv2.imread(image_name[0], 0),
                                       (self.image_h, self.image_w)),
-                           (3, self.image_h, self.image_w, self.image_c)) / 255
+                           (1, self.image_h, self.image_w, self.image_c)) / 255
         print("{}: Done init data generators".format(datetime.now()))
 
         c_feed_dict = {
             self.input_data: image
         }
-        # output_masks: 1 * 324 * 324 * 3
+        # output_masks: 1 * 324 * 324 * 1
         output_masks = self.sess.run(
             self.output, feed_dict=c_feed_dict
         )

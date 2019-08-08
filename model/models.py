@@ -30,7 +30,7 @@ def Unet(name, in_data, reuse=False):
                                    kernel_initializer=tf.contrib.layers.xavier_initializer())
         # [None,252,252,128]==>[None,250,250,128]
         conv2_2 = tf.layers.conv2d(conv2_1, 128, 3, activation=tf.nn.relu,
-                                   kernel_initializer=tf.contrib.layers.xvaier_initializer())
+                                   kernel_initializer=tf.contrib.layers.xavier_initializer())
         crop2 = tf.keras.layers.Cropping2D(cropping=((41, 41), (41, 41)))(conv2_2)
         # [None,250,250,128]==>[None,125,125,128]
         pool2 = tf.layers.max_pooling2d(conv2_2, 2, 2)
@@ -55,7 +55,7 @@ def Unet(name, in_data, reuse=False):
 
         # [None,56,56,512]
         drop4 = tf.layers.dropout(conv4_2)
-        # todo? Arguments: inputs, rate=0.5.
+        # Arguments: inputs, rate=0.5.
 
         # [None,56,56,512]==>[None,48,48,512]
         crop4 = tf.keras.layers.Cropping2D(cropping=((4, 4), (4, 4)))(drop4)
